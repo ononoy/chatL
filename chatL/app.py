@@ -15,16 +15,20 @@ class IndexHandler(tornado.web.RequestHandler):
         img_name = random.choice(face_pics)
         self.render('index.html', img_path=self.static_url('images/' + img_name))
 
-
+#サーバサイドでメインの処理
+#waitersとmessagesに接続している人と送られてきたメッセージを記録
 class ChatHandler(tornado.websocket.WebSocketHandler):
 
     waiters = set()
     messages = []
 
+#接続してきた人の登録と、その人に対して今までのログを送信
     def open(self, *args, **kwargs):
         self.waiters.add(self)
         self.write_message({'messages': self.messages})
-
+        
+#メッセージが送られてきたときに送られてきたメッセージを自分以外の参加者にブロードキャスト
+#このとき送られてきたメッセージはログに追加
     def on_message(self, message):
         message = json.loads(message)
         self.messages.append(message)
@@ -33,6 +37,8 @@ class ChatHandler(tornado.websocket.WebSocketHandler):
                 continue
             waiter.write_message({'img_path': message['img_path'], 'message': message['message']})
 
+#接続が切断されたときにwaitersから接続者を削除
+#切断された人にはメッセージをブロードキャストしないようにする
     def on_close(self):
         self.waiters.remove(self)
 
